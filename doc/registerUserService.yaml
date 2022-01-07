@@ -1,0 +1,300 @@
+asyncapi: '2.2.0'
+info:
+  title: Pepper Iot Device MQTT API
+  version: '0.0.1'
+  description: |
+    The Pepper Device API allows you to message the pepperIoT backend.
+  license:
+    name: ""
+    
+servers:
+  staging:
+    url: mqtts://{server}:{port}
+    protocol: mqtt
+    description: Message broker
+    variables:
+      server:
+        default: 'stage.pepperos.io'
+      port:
+        description: Secure connection (TLS) is available through port 8883.
+        default: '8883'
+    security:
+      - apiKey: []           
+
+defaultContentType: application/json
+
+channels:
+  r/{clientId}/reg/{UUID}:
+    description: registration topic
+    parameters:
+      UUID:
+        $ref: '#/components/parameters/UUID'
+      clientId:
+        $ref: '#/components/parameters/clientId'
+    publish:
+      summary: publish registraton request to backend
+      operationId: deviceRegister
+      message:
+        $ref: '#/components/messages/DeviceRegister'
+      traits:
+        - $ref: '#/components/operationTraits/mqtt'        
+
+  t/{clientId}/reg/{deviceName}:
+    description: registration response from server
+    parameters:
+      clientId:
+        $ref: '#/components/parameters/clientId'
+      deviceName:
+        $ref: '#/components/parameters/clientId'
+    subscribe:
+      operationId: deviceRegisterResponse
+      traits:
+        - $ref: '#/components/operationTraits/mqtt'
+      message:
+        $ref: '#/components/messages/DeviceRegisterResponse'
+
+
+components:
+  messages:
+    DeviceRegister:
+      name: deviceRegister
+      title: User signed up event
+      summary: Inform about a new user registration in the system
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/deviceRegisterPayload'
+    DeviceRegisterResponse:
+      name: deviceRegisterResponse
+      title: Response from server
+      summary: summary
+      contentType: application/json
+      payload:
+        $ref: '#/components/schemas/deviceRegisterResponsePayload'
+    lightMeasured:
+      name: lightMeasured
+      title: Light measured
+      summary: Inform about environmental lighting conditions of a particular streetlight.
+      contentType: application/json
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: "#/components/schemas/lightMeasuredPayload"
+    turnOnOff:
+      name: turnOnOff
+      title: Turn on/off
+      summary: Command a particular streetlight to turn the lights on or off.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: "#/components/schemas/turnOnOffPayload"
+    dimLight:
+      name: dimLight
+      title: Dim light
+      summary: Command a particular streetlight to dim the lights.
+      traits:
+        - $ref: '#/components/messageTraits/commonHeaders'
+      payload:
+        $ref: "#/components/schemas/dimLightPayload"
+
+  schemas:    
+    deviceRegisterPayload:
+      type: object
+      description: "Registration Payload"
+      properties:
+        version: 
+          type: string
+          default: '1.0'
+        model:
+          type: string
+          default: registration
+        operation: 
+          type: string
+          default: register        
+        id:
+          type: string
+        fields:
+          type: object
+          properties: 
+            device_id:
+              type: string
+            device_type:
+              type: string
+            id: 
+              type: string
+            token:
+              type: string
+            username: 
+              type: string
+            vendor: 
+              type: string
+        error:
+          type: string
+          description: error
+        path:
+          type: string
+          description: bar
+    deviceRegisterResponsePayload:
+      type: object
+      description: "Registration Response Payload"
+      properties:
+        version: 
+          type: string
+        model: 
+          type: string
+          default: "registration"
+        operation: 
+          type: string
+          default: "register"
+        device_id:
+          type: string
+        path:
+          type: string
+          description: path
+        result:
+          type: object
+          properties: 
+            services: 
+              type: array 
+              properties:
+                type: 
+                  type: string
+                id: 
+                  type: string
+                source: 
+                  type: string
+                features:
+                  type: array          
+                subscriptions:
+                  type: array
+                  properties:              
+                      status:
+                        type: string
+                      name:
+                        type: string
+        updated:
+          type: string
+        created: 
+          type: string
+        username:
+          type: string
+          default: screen
+        account_id: 
+          type: string
+        ttl:
+          type: string
+        pass: 
+          type: string
+        camera_id:
+          type: string
+        id:
+          type: string
+
+    lightMeasuredPayload:
+      type: object
+      properties:
+        lumens:
+          type: integer
+          minimum: 0
+          description: Light intensity measured in lumens.
+        sentAt:
+          $ref: "#/components/schemas/sentAt"
+    turnOnOffPayload:
+      type: object
+      properties:
+        command:
+          type: string
+          enum:
+            - on
+            - off
+          description: Whether to turn on or off the light.
+        sentAt:
+          $ref: "#/components/schemas/sentAt"
+    dimLightPayload:
+      type: object
+      properties:
+        percentage:
+          type: integer
+          description: Percentage to which the light should be dimmed to.
+          minimum: 0
+          maximum: 100
+        sentAt:
+          $ref: "#/components/schemas/sentAt"
+    sentAt:
+      type: string
+      format: date-time
+      description: Date and time when the message was sent.
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: user
+      description: Provide your API key as the user and leave the password empty.
+    supportedOauthFlows:
+      type: oauth2
+      description: Flows to support OAuth 2.0
+      flows:
+        implicit:
+          authorizationUrl: 'https://authserver.example/auth'
+          scopes:
+            'streetlights:on': Ability to switch lights on
+            'streetlights:off': Ability to switch lights off
+            'streetlights:dim': Ability to dim the lights
+        password:
+          tokenUrl: 'https://authserver.example/token'
+          scopes:
+            'streetlights:on': Ability to switch lights on
+            'streetlights:off': Ability to switch lights off
+            'streetlights:dim': Ability to dim the lights
+        clientCredentials:
+          tokenUrl: 'https://authserver.example/token'
+          scopes:
+            'streetlights:on': Ability to switch lights on
+            'streetlights:off': Ability to switch lights off
+            'streetlights:dim': Ability to dim the lights
+        authorizationCode:
+          authorizationUrl: 'https://authserver.example/auth'
+          tokenUrl: 'https://authserver.example/token'
+          refreshUrl: 'https://authserver.example/refresh'
+          scopes:
+            'streetlights:on': Ability to switch lights on
+            'streetlights:off': Ability to switch lights off
+            'streetlights:dim': Ability to dim the lights
+    openIdConnectWellKnown:
+      type: openIdConnect
+      openIdConnectUrl: 'https://authserver.example/.well-known'
+
+  parameters:
+    streetlightId:
+      description: The ID of the streetlight.
+      schema:
+        type: string
+    UUID:
+      description: UUID used in path
+      schema:
+        type: string
+    clientId:
+      description: clientId used in path
+      schema:
+        type: string
+    deviceName:
+      description: external_device_id used in path
+      schema:
+        type: string
+
+  messageTraits:
+    commonHeaders:
+      headers:
+        type: object
+        properties:
+          my-app-header:
+            type: integer
+            minimum: 0
+            maximum: 100
+
+  operationTraits:
+    mqtt:
+      bindings:
+        mqtt:
+          qos: 1
+          port: 8883
+  
